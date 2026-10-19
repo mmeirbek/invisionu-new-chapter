@@ -40,6 +40,25 @@ const transcript = [
 ];
 
 describe('QualityGuardService', () => {
+  // The synthetic panel ends the day before "now": on 16 September it keeps its own 10–15 September dates.
+  beforeEach(() => jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] }).setSystemTime(new Date('2026-09-16T12:00:00Z')));
+  afterEach(() => jest.useRealTimers());
+
+  it('moves the synthetic panel so it always ends yesterday, keeping its spacing', async () => {
+    jest.setSystemTime(new Date('2026-12-01T08:00:00Z'));
+    const { service, gateway } = harness();
+    await service.calibration({ interviewerRef: 'synthetic-interviewer-a', from: '2026-11-01', to: '2026-12-02' });
+
+    const heldAt = gateway.qualityCheck.mock.calls[0][0].history.map((item: { heldAt: string }) => item.heldAt);
+    expect(heldAt).toEqual([
+      '2026-11-25T09:00:00.000Z', '2026-11-26T09:00:00.000Z', '2026-11-27T09:00:00.000Z',
+      '2026-11-28T09:00:00.000Z', '2026-11-29T09:00:00.000Z', '2026-11-30T09:00:00.000Z',
+    ]);
+    // The old fixed dates are no longer inside the panel.
+    await expect(service.calibration({ interviewerRef: 'synthetic-interviewer-a', from: '2026-09-01', to: '2026-10-01' }))
+      .rejects.toMatchObject({ status: 409, response: { code: 'NOT_ENOUGH_HISTORY', details: { interviews: 0 } } });
+  });
+
   it('checks an interview from its transcript, with the profile redacted, and stores it', async () => {
     const { service, gateway, rows } = harness({ transcript });
     const check = await service.interview(interviewId);
