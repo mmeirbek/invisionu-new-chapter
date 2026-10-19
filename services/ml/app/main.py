@@ -12,7 +12,7 @@ from .routes.core import core_router
 from .routes.extended import extended_router
 from .schemas.contracts import HealthResponse
 from .gateway.usage import FileUsageStore
-from .gateway.config import load_models_configuration
+from .gateway.config import Provider, load_models_configuration
 from .gateway.media import MediaGateway, create_media_gateway
 from .gateway.service import LazyModelGateway, ModelGateway, create_gateway
 from .modules.actor import ScenarioActor
@@ -57,7 +57,9 @@ def create_app(
     authenticate = internal_auth_dependency(resolved.ml_internal_token)
     usage_store = FileUsageStore(resolved.usage_log_path)
     scenario_repository = load_scenario_repository()
-    models = load_models_configuration()
+    models = load_models_configuration().for_llm_provider(
+        Provider(resolved.llm_provider)
+    )
     resolved_media_gateway = media_gateway or create_media_gateway(resolved, models)
     turn_transcription = TurnTranscriptionService(resolved_media_gateway)
     interview_transcription = InterviewTranscriptionService(resolved_media_gateway)

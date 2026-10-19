@@ -21,7 +21,10 @@ services:
       MEDIA_GATEWAY_MODE: ${MEDIA_GATEWAY_MODE:-}
       BUDGET_USD_CAP: ${BUDGET_USD_CAP:-20}
       DEMO_MODE: ${DEMO_MODE:-true}
+      # openai or anthropic; anthropic has no replay cassettes yet (.env.example)
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
 
   api:

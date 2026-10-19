@@ -323,7 +323,14 @@ def create_gateway(
     providers: dict[Provider, ModelProvider] = {}
     if settings.gateway_mode != "replay":
         factories = dict(provider_factories or _default_provider_factories())
-        providers = {provider: factory() for provider, factory in factories.items()}
+        # Build only the clients the tasks route to: with LLM_PROVIDER=anthropic
+        # an empty OPENAI_API_KEY must not stop the gateway, and the reverse.
+        used = {task.provider for task in configuration.tasks.values()}
+        providers = {
+            provider: factory()
+            for provider, factory in factories.items()
+            if provider in used
+        }
     gateway_budget = budget or GatewayBudget(
         configuration,
         FileUsageStore(settings.usage_log_path),
@@ -340,6 +347,7 @@ def create_gateway(
 
 
 def _default_provider_factories() -> Mapping[Provider, ProviderFactory]:
+    from ..providers.anthropic import AnthropicProvider
     from ..providers.openai import OpenAIProvider
 
-    return {Provider.OPENAI: OpenAIProvider}
+    return {Provider.OPENAI: OpenAIProvider, Provider.ANTHROPIC: AnthropicProvider}

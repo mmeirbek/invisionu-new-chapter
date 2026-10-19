@@ -25,6 +25,7 @@ class ModelConfigurationError(ValueError):
 
 class Provider(str, Enum):
     OPENAI = "openai"
+    ANTHROPIC = "anthropic"
     DEEPGRAM = "deepgram"
 
 
@@ -84,10 +85,57 @@ class TaskDefinition(StrictModel):
     demo_seed_available: bool
 
 
+class TaskOverride(StrictModel):
+    """A task's model choice when LLM_PROVIDER selects another text provider."""
+
+    model: str = Field(min_length=1)
+    fallback_model: str = Field(min_length=1)
+    request_cost_limit_usd: PositiveMoney
+
+
+# The text provider every task in `tasks` is written for. LLM_PROVIDER picks
+# another one from `llm_providers`; speech and transcription never move.
+DEFAULT_LLM_PROVIDER = Provider.OPENAI
+LLM_PROVIDERS = frozenset({Provider.OPENAI, Provider.ANTHROPIC})
+
+
 class ModelsConfiguration(StrictModel):
     version: Literal[1]
     models: dict[str, ModelDefinition] = Field(min_length=1)
     tasks: dict[TaskName, TaskDefinition]
+    llm_providers: dict[Provider, dict[TaskName, TaskOverride]] = Field(
+        default_factory=dict
+    )
+
+    def for_llm_provider(self, provider: Provider) -> "ModelsConfiguration":
+        """Move every default-provider text task to `provider`.
+
+        Replay caveat: cassettes are keyed by provider and model, so a task
+        moved here has no recorded answers until they are recorded for it.
+        """
+
+        if provider == DEFAULT_LLM_PROVIDER:
+            return self
+        overrides = self.llm_providers.get(provider)
+        if overrides is None:
+            raise ModelConfigurationError(
+                f"models configuration has no llm_providers.{provider.value}"
+            )
+        tasks = {
+            name: (
+                task.model_copy(
+                    update={"provider": provider, **overrides[name].model_dump()}
+                )
+                if name in overrides
+                else task
+            )
+            for name, task in self.tasks.items()
+        }
+        # The overrides were checked when this configuration loaded; the result
+        # routes text tasks to `provider` and carries no further overrides.
+        return ModelsConfiguration.model_validate(
+            {"version": self.version, "models": self.models, "tasks": tasks}
+        )
 
     @model_validator(mode="after")
     def validate_task_inventory_and_references(self) -> "ModelsConfiguration":
@@ -112,6 +160,32 @@ class ModelsConfiguration(StrictModel):
                     raise ValueError(
                         f"{task_name.value}.{role} provider does not match {model_name}"
                     )
+
+        text_tasks = {
+            name
+            for name, task in self.tasks.items()
+            if task.provider == DEFAULT_LLM_PROVIDER
+        }
+        for provider, overrides in self.llm_providers.items():
+            if provider not in LLM_PROVIDERS or provider == DEFAULT_LLM_PROVIDER:
+                raise ValueError(f"llm_providers.{provider.value} is not an alternative text provider")
+            if set(overrides) != text_tasks:
+                raise ValueError(
+                    f"llm_providers.{provider.value} must cover exactly the "
+                    f"{DEFAULT_LLM_PROVIDER.value} tasks"
+                )
+            for task_name, override in overrides.items():
+                if override.model == override.fallback_model:
+                    raise ValueError(
+                        f"llm_providers.{provider.value}.{task_name.value} must use a distinct fallback model"
+                    )
+                for model_name in (override.model, override.fallback_model):
+                    model = self.models.get(model_name)
+                    if model is None or model.provider != provider:
+                        raise ValueError(
+                            f"llm_providers.{provider.value}.{task_name.value} "
+                            f"references {model_name}, not a {provider.value} model"
+                        )
         return self
 
 
