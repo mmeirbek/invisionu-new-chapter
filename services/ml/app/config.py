@@ -10,6 +10,7 @@ import os
 
 
 GatewayMode = Literal["live", "record", "replay"]
+LlmProvider = Literal["openai", "anthropic"]
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,11 @@ class Settings:
     # Speech and transcription (Deepgram) on their own: live speech while model
     # answers replay, say. None follows gateway_mode.
     media_gateway_mode: GatewayMode | None = None
+    # Text models (M1-M5, C, S, follow-ups): openai or anthropic (Claude).
+    # Recorded cassettes exist only for openai, so anthropic needs
+    # GATEWAY_MODE=live or record: in replay its model endpoints answer
+    # 503 AI_UNAVAILABLE until Claude cassettes are recorded.
+    llm_provider: LlmProvider = "openai"
 
     @property
     def media_mode(self) -> GatewayMode:
@@ -48,6 +54,10 @@ def load_settings(environment: Mapping[str, str] | None = None) -> Settings:
     if media_gateway_mode not in {None, "live", "record", "replay"}:
         raise ValueError("MEDIA_GATEWAY_MODE must be live, record, replay, or empty")
 
+    llm_provider = values.get("LLM_PROVIDER", "").strip().lower() or "openai"
+    if llm_provider not in {"openai", "anthropic"}:
+        raise ValueError("LLM_PROVIDER must be openai or anthropic")
+
     try:
         budget_usd_cap = Decimal(values.get("BUDGET_USD_CAP", "20"))
     except InvalidOperation as error:
@@ -65,4 +75,5 @@ def load_settings(environment: Mapping[str, str] | None = None) -> Settings:
             values.get("USAGE_LOG_PATH", "/data/gateway-usage.jsonl")
         ),
         media_gateway_mode=media_gateway_mode,
+        llm_provider=llm_provider,
     )

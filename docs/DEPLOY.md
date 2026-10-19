@@ -48,6 +48,7 @@ cp .env.example .env
 | `GATEWAY_MODE` | `replay` — ML отвечает из записанных ответов и не тратит бюджет |
 | `VIDEO_RETENTION_DAYS` | `30` |
 | `OPENAI_API_KEY`, `DEEPGRAM_API_KEY` | пусто для `replay`; нужны только для живого режима (раздел 5) |
+| `LLM_PROVIDER` | `openai` (по умолчанию) или `anthropic` (Claude). Для `anthropic` записанных ответов пока нет: нужен `GATEWAY_MODE=live` и `ANTHROPIC_API_KEY`, в `replay` модельные ответы будут `503 AI_UNAVAILABLE` (раздел 5) |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | видеоинтервью: cloud.livekit.io → проект → Settings → Keys. Пусто — вход в звонок отвечает `503 VIDEO_UNAVAILABLE`, всё остальное работает |
 | `INTERVIEW_TIME_ZONE` | можно не заполнять: по умолчанию `Asia/Almaty` |
 
@@ -173,6 +174,8 @@ BUDGET_USD_CAP=10
 
 $C up -d ml                                  # пересоздать ml с новыми настройками
 ```
+
+**Claude вместо OpenAI.** `LLM_PROVIDER=anthropic` и `ANTHROPIC_API_KEY=…` в `.env`, затем `$C up -d ml`. Задачи переходят на `claude-haiku-5-5` (вместо `gpt-6-luna`) и `claude-sonnet-5-5` (вместо `gpt-6-sol`), см. `llm_providers` в `config/models.json`. Голос и расшифровка остаются на Deepgram. Записей ответов Claude ещё нет, поэтому с `GATEWAY_MODE=replay` модельные эндпоинты отвечают `503 AI_UNAVAILABLE`: для питча оставляйте `openai`, пока записи не сделаны.
 
 Расход виден у админа в плитке «Бюджет ИИ». Когда он дойдёт до лимита, ML отвечает
 `AI_BUDGET_EXCEEDED`. Для #23 лимит live-демо — $10; проверьте также баланс и лимит

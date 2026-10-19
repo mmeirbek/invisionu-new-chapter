@@ -19,6 +19,24 @@
         "output_usd": 10.00
       }
     },
+    "claude-haiku-5-5": {
+      "provider": "anthropic",
+      "pricing": {
+        "unit": "million_tokens",
+        "input_usd": 0.10,
+        "cached_input_usd": 0.01,
+        "output_usd": 0.50
+      }
+    },
+    "claude-sonnet-5-5": {
+      "provider": "anthropic",
+      "pricing": {
+        "unit": "million_tokens",
+        "input_usd": 2.00,
+        "cached_input_usd": 0.10,
+        "output_usd": 10.00
+      }
+    },
     "nova-3": {
       "provider": "deepgram",
       "pricing": {
@@ -138,6 +156,50 @@
       "request_cost_limit_usd": 0.02,
       "cache_ttl_seconds": 604800,
       "demo_seed_available": true
+    }
+  },
+  "llm_providers": {
+    "anthropic": {
+      "simulation_actor": {
+        "model": "claude-haiku-5-5",
+        "fallback_model": "claude-sonnet-5-5",
+        "request_cost_limit_usd": 0.025
+      },
+      "simulation_assessment": {
+        "model": "claude-sonnet-5-5",
+        "fallback_model": "claude-haiku-5-5",
+        "request_cost_limit_usd": 0.075
+      },
+      "brief": {
+        "model": "claude-sonnet-5-5",
+        "fallback_model": "claude-haiku-5-5",
+        "request_cost_limit_usd": 0.075
+      },
+      "interview_draft": {
+        "model": "claude-sonnet-5-5",
+        "fallback_model": "claude-haiku-5-5",
+        "request_cost_limit_usd": 0.075
+      },
+      "consistency": {
+        "model": "claude-haiku-5-5",
+        "fallback_model": "claude-sonnet-5-5",
+        "request_cost_limit_usd": 0.038
+      },
+      "surprise_question": {
+        "model": "claude-haiku-5-5",
+        "fallback_model": "claude-sonnet-5-5",
+        "request_cost_limit_usd": 0.025
+      },
+      "interview_follow_up": {
+        "model": "claude-haiku-5-5",
+        "fallback_model": "claude-sonnet-5-5",
+        "request_cost_limit_usd": 0.012
+      },
+      "quality_check": {
+        "model": "claude-haiku-5-5",
+        "fallback_model": "claude-sonnet-5-5",
+        "request_cost_limit_usd": 0.062
+      }
     }
   }
 }
