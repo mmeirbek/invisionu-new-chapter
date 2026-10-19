@@ -151,7 +151,23 @@ export class QualityGuardService {
     }));
     if (this.config.get<string>('DEMO_MODE') !== 'true') return saved;
     const filename = resolve(process.cwd(), '../../seed/quality-history.json');
-    return [...(JSON.parse(await readFile(filename, 'utf8')) as ScoredInterview[]), ...saved];
+    const panel = JSON.parse(await readFile(filename, 'utf8')) as ScoredInterview[];
+    return [...this.endingYesterday(panel), ...saved];
+  }
+
+  /**
+   * The seed's dates are fixed, but a calibration asks about the last weeks.
+   * Move the synthetic panel by whole days so its latest interview was held
+   * yesterday: its spacing and times of day stay, and "the last 30 days"
+   * finds it whatever today is.
+   */
+  private endingYesterday(panel: ScoredInterview[]): ScoredInterview[] {
+    if (panel.length === 0) return panel;
+    const day = 86_400_000;
+    const latest = Math.max(...panel.map((item) => Math.floor(Date.parse(item.heldAt) / day)));
+    const yesterday = Math.floor(Date.now() / day) - 1;
+    const shift = (yesterday - latest) * day;
+    return panel.map((item) => ({ ...item, heldAt: new Date(Date.parse(item.heldAt) + shift).toISOString() }));
   }
 
   private day(value: string, field: 'from' | 'to'): Date {
